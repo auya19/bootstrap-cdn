@@ -8,7 +8,6 @@ var assert    = require('assert');
 var yaml      = require('js-yaml');
 var format    = require('format');
 var encode    = require('htmlencode').htmlEncode;
-var validator = require('html-validator');
 
 var response  = {};
 
@@ -89,51 +88,6 @@ function assertContains(needle, haystack) {
     assert(haystack.indexOf(needle) > 0);
 }
 
-function assertValidHTML(response, done) {
-    var options = {
-        data: response.body,
-        format: 'text'
-    };
-
-    validator(options, function (err, data) {
-        if (err) {
-            console.trace(err);
-        }
-
-        var errors = data.split('\n')
-            .filter(function (e) {
-                if (e.match(/^Error:/)) {
-                    return true;
-                }
-                return false;
-            })
-            .filter(function(e) {
-                var ignores = [
-                    /^Error: Attribute.+color.+not allowed on element.+link.+at this point./,
-                    /^Error: A.+link.+element with a.+sizes.+attribute must have a.+rel.+attribute that contains the value.+icon.+./
-                ];
-
-                for (var i = 0, len = ignores.length; i < len; i++) {
-                    if (e.match(ignores[i])) {
-                        console.log('\n>> (IGNORED) ' + e);
-                        return false;
-                    }
-                }
-                console.error('\n>> ' + e + '\n');
-                return true;
-            });
-
-        if (errors.length > 0) {
-            var sep = '\n\t - ';
-
-            assert(false, sep + errors.join(sep));
-        } else {
-            assert(true);
-        }
-        done();
-    });
-}
-
 function preFetch(uri, cb, http) {
     http = typeof http === 'undefined' ? require('http') : http;
 
@@ -187,8 +141,7 @@ module.exports = {
     assert: {
         response:    assertResponse,
         contains:    assertContains,
-        contentType: assertContentType,
-        validHTML:   assertValidHTML
+        contentType: assertContentType
     },
     preFetch: preFetch,
     extension: extension,

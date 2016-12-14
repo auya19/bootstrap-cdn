@@ -13,6 +13,7 @@ var MOCHA      = path.join(__dirname, 'node_modules/.bin/mocha');
 var ESLINT     = path.join(__dirname, 'node_modules/.bin/eslint');
 var BOOTLINT   = path.join(__dirname, 'node_modules/.bin/bootlint');
 var PUGLINT    = path.join(__dirname, 'node_modules/.bin/pug-lint');
+var HTMLLINT   = path.join(__dirname, 'node_modules/.bin/html-validator');
 var FOREVER    = path.join(__dirname, 'node_modules/.bin/forever');
 
 var MOCHA_OPTS = ' --timeout 15000 --slow 500';
@@ -52,6 +53,7 @@ target.lint = function () {
     target.eslint();
     target.puglint();
     target.bootlint();
+    target.htmllint();
 };
 
 target.functional = function () {
@@ -178,6 +180,72 @@ target.bootlint = function () {
     }, 2000);
 };
 
+target.htmllint = function () {
+    echo('+ node make start');
+    var port = 3081;
+
+    env.PORT = port;
+    env.NODE_ENV = 'development';
+    target.start();
+
+    var pages = [
+        '',
+        'fontawesome',
+        'bootswatch',
+        'bootlint',
+        'legacy',
+        'showcase',
+        'integrations'
+    ];
+
+    var output = '';
+
+    // sleep
+    setTimeout(function () {
+        echo('------------------------------------------------');
+        async.eachSeries(pages, function (page, callback) {
+            var url = 'http://localhost:' + port + '/' + page + (page === '' ? '' : '/');
+
+            if (page !== '') {
+                page += '_';
+            }
+
+            output = path.join(__dirname, page + 'lint.html');
+            var file = fs.createWriteStream(output);
+
+            // okay, not really curl, but it communicates
+            echo('+ curl ' + url + ' > ' + output);
+
+            http.get(url, function (response) {
+                response.pipe(file);
+                response.on('end', function () {
+                    file.close();
+                    callback();
+                });
+            });
+        }, function () {
+            echo('+ node make tryStop');
+            target.tryStop();
+
+            echo('+ html-validator --verbose --file=' + output);
+
+            var ignore  = 'Error: Attribute “color” not allowed on element “link” at this point.';
+            var ignore2 = 'Error: A “link” element with a “sizes” attribute must have a “rel” attribute that contains the value “icon”.';
+
+            var lint = exec(HTMLLINT + ' --verbose --format=text --ignore=\'' + ignore + '\' --ignore=\'' + ignore2 + '\' --file=' + output, {
+                async: true,
+                silent: true
+            });
+
+            lint.stdout.on('data', function(data) {
+                console.log(data);
+                rm(output);
+            });
+
+        });
+    }, 2000);
+};
+
 target.all = function () {
     target.test();
     target.run();
@@ -195,6 +263,7 @@ target.help = function () {
     echo('  eslint      run eslint');
     echo('  bootlint    run Bootlint');
     echo('  puglint     run pug-lint');
+    echo('  htmllint    run HTML validator');
     echo('  travis      run Travis CI checks');
     echo('  appveyor    run AppVeyor CI checks');
     echo('  help        shows this help message');
