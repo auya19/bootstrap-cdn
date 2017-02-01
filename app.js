@@ -18,6 +18,7 @@ var errorHandler = require('errorhandler');
 var enforce      = require('express-sslify');
 var sitemap      = require('express-sitemap');
 var helmet       = require('helmet');
+var minify       = require('express-minify');
 
 var helpers      = require('./lib/helpers');
 var routes       = require('./routes');
@@ -55,6 +56,7 @@ if (env === 'production') {
 
 // middleware
 app.use(compression());
+app.use(minify());
 app.set('etag', false);
 
 app.use(favicon(path.join(__dirname, 'public', config.favicon.uri), '7d'));
